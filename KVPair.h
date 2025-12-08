@@ -1,3 +1,6 @@
+#ifndef KVPAIR_H
+#define KVPAIR_H
+
 template <typename T>
 class KVPair {
 private: 
@@ -28,3 +31,5 @@ public:
         return Key >= other.Key;
     }
 };
+
+#endif // KVPAIR_H

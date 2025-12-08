@@ -1,8 +1,8 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -g
 TARGET = test_seq_brtree
-SOURCES = test_seq_brtree.cpp sequential_brtree.cpp
-OBJECTS = $(SOURCES:.cpp=.o)
+SOURCES = test_seq_brtree.cpp
+OBJECTS = $(SOURCES:.h=.o)
 
 all: $(TARGET)
 

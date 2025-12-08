@@ -1,3 +1,6 @@
+#ifndef SEQUENTIAL_BRTREE_H
+#define SEQUENTIAL_BRTREE_H
+
 #include <stdio.h>
 #include <iostream>
 #include "KVPair.h"
@@ -18,56 +21,28 @@ private:
 
     void rotate_tree(Node<T> * node, Direction dir) {
         Node<T> * parent = node->parent;
-        if(dir == Direction::LEFT) {
-	        Node<T> * new_root = node->right; 
-            Node<T> * new_child = new_root->left;
-            node->right = new_child;
 
-            if (new_child) {
-                new_child->parent = node;
-            }
 
-            new_root->left = node;
-            new_root->parent = parent;
-
-	        node->parent = new_root;
-            if (parent) {
-		       if(parent->left == node)
-                    parent->left = new_root;
-		        else if(parent->right == node)
-                    parent->right = new_root;
-                else
-                    throw std::runtime_error("rotate_tree: parent does not point to node");
-	        } else {
-		        root = new_root;
-            }
+        Node<T> * new_root = node->get_opposite_child(dir); 
+        Node<T> * new_child = new_root->get_child(dir);
+        node->set_opposite_child(dir, new_child);
+        if (new_child) {
+            new_child->parent = node;
         }
-	        //return new_root;
-        else if(dir == Direction::RIGHT) {
-            Node<T>* new_root = node->left; 
-            Node<T>* new_child = new_root->right;
-            node->left = new_child;
 
-            if (new_child) {
-                new_child->parent = node;
-            }
+        new_root->set_child(dir, node);
+        new_root->parent = parent;
+        node->parent = new_root;
 
-            new_root->right = node;
-            new_root->parent = parent;
-
-	        node->parent = new_root;
-            if (parent) {
-                if(parent->left == node)
-                    parent->left = new_root;
-		        else if(parent->right == node)
-                    parent->right = new_root;
-                else
-                    throw std::runtime_error("rotate_tree: parent does not point to node");
-	        } else {
-		        root = new_root;
-            }
-
-	        //return new_root;
+        if(parent) {
+            if(parent->left == node)
+                parent->left = new_root;
+            else if(parent->right == node)
+                parent->right = new_root;
+            else
+                throw std::runtime_error("rotate_tree: parent does not point to node");
+        } else {
+            root = new_root;
         }
     }
 
@@ -180,6 +155,143 @@ private:
         }
     }
 
+    Node<T> * find_node(T data) {
+        Node<T> * current = root;
+        while(current != nullptr) {
+            if(data == current->data) {
+                return current;
+            } else if(data < current->data) {
+                current = current->left;
+            } else {
+                current = current->right;
+            }
+        }
+        return nullptr;
+    }
+
+    void start_balance(Direction dir, Node<T> * node) {
+        Node<T> * parent = node->parent;
+        Node<T>* sibling, * close_nephew, * distant_nephew;
+
+        sibling = parent->get_opposite_child(dir);
+        distant_nephew = sibling->get_opposite_child(dir);
+        close_nephew = sibling->get_child(dir);
+        if(sibling->color == Color::RED) {
+            //Case 3:
+            rotate_tree(parent, dir);
+            parent->color = Color::RED;
+            sibling->color = Color::BLACK;
+            sibling = close_nephew;
+            
+            distant_nephew = sibling->get_opposite_child(dir);
+
+            if(distant_nephew && distant_nephew->color == Color::RED) {
+                //Case 6:
+                rotate_tree(parent, dir);
+                sibling->color = parent->color;
+                parent->color = Color::BLACK;
+                distant_nephew->color = Color::BLACK;
+                return;
+            }
+            close_nephew = sibling->get_opposite_child(dir);
+            
+            if(close_nephew && close_nephew->color == Color::RED) {
+                //Case 5:
+                rotate_tree(sibling, (dir == Direction::LEFT) ? Direction::RIGHT : Direction::LEFT);
+                close_nephew->color = Color::BLACK;
+                sibling->color = Color::RED;
+                sibling = close_nephew;
+
+                rotate_tree(parent, dir);
+                sibling->color = parent->color;
+                parent->color = Color::BLACK;
+                distant_nephew->color = Color::BLACK;
+                return;
+            }
+
+            sibling->color = Color::RED;
+            parent->color = Color::BLACK;
+            return;
+        }
+
+        if(distant_nephew && distant_nephew->color == Color::RED) {
+            //Case 6:
+            rotate_tree(parent, dir);
+            sibling->color = parent->color;
+            parent->color = Color::BLACK;
+            distant_nephew->color = Color::BLACK;
+            return;
+        }
+
+        if(close_nephew && close_nephew->color == Color::RED) {
+            //Case 5:
+            rotate_tree(sibling, (dir == Direction::LEFT) ? Direction::RIGHT : Direction::LEFT);
+            close_nephew->color = Color::BLACK;
+            sibling->color = Color::RED;
+            sibling = close_nephew;
+
+            rotate_tree(parent, dir);
+            sibling->color = parent->color;
+            parent->color = Color::BLACK;
+            distant_nephew->color = Color::BLACK;
+            return;
+        }
+
+        //Case 1:
+        if(!parent)
+            return;
+
+        if(parent->color == Color::RED) {
+            sibling->color = Color::RED;
+            parent->color = Color::BLACK;
+            return;
+        }
+
+        sibling->color = Color::RED;
+        node = parent;
+        if(node->parent != nullptr) {
+            start_balance((node->parent->left == node) ? Direction::LEFT : Direction::RIGHT, node);
+        }
+    }
+
+    bool simple_remove(Node<T> * node) {
+        if(node->left != nullptr && node->right != nullptr) {
+            //Node has two children, find in-order successor
+            Node<T> * successor = node->right;
+            while(successor->left != nullptr) {
+                successor = successor->left;
+            }
+            if(successor->right != nullptr) {
+                successor->right->color = Color::BLACK;
+            }
+            successor->parent->left = successor->right;
+            node->data = successor->data;
+            delete successor;
+            return true;
+        }
+        if(node->left != nullptr || node->right != nullptr) {
+            //Node has one child
+            Node<T> * child = (node->left != nullptr) ? node->left : node->right;
+            child->color = Color::BLACK;
+            Node<T> * parent = node->parent;
+            if(parent != nullptr) {
+                if(parent->left == node) {
+                    parent->left = child;
+                } else {
+                    parent->right = child;
+                }
+                child->parent = parent;
+            } else {
+                //node is root
+                root = child;
+                child->parent = nullptr;
+            }
+            delete node;
+            return true;
+        }
+        return false;
+    }
+
     public:
     Seq_BRTree<T>() {
         root = nullptr;
@@ -195,8 +307,33 @@ private:
         }   
         insert_helper(root, data);
     }
-    bool search(T data);
-    void remove(T data);
+    bool contains(T data) {
+        return (find_node(data) != nullptr) ? true : false;
+    }
+    void remove(T data) {
+        Node<T> * node = find_node(data);
+        if(node == nullptr) {
+            std::cout << "Node with data " << data << " not found." << std::endl;
+            return;  
+        }
+        if (simple_remove(node)) {return;}
+
+        
+        Node<T> * parent = node->parent;
+        if(parent == nullptr) {
+            //node is root
+            ;
+            root = nullptr;
+            return;
+        }
+        Direction dir = (parent->left == node) ? Direction::LEFT : Direction::RIGHT;
+
+        parent->set_child(dir, nullptr);
+
+        start_balance(dir, parent);
+
+
+    }
 
     bool verify_tree() {
         if (verify_helper(root) < 1) {
@@ -218,3 +355,4 @@ private:
 
 };
 } // namespace sql_brtree
+#endif // SEQUENTIAL_BRTREE_H

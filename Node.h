@@ -1,3 +1,8 @@
+#ifndef NODE_H
+#define NODE_H
+
+#include <iostream>
+
 enum class Color { RED, BLACK };
 
 enum class Direction { LEFT, RIGHT };
@@ -30,7 +35,17 @@ public:
         }
     }
 
-    Node(T d, Color c) : data(d), left(nullptr), right(nullptr), color(c) {}
+    inline void set_opposite_child(Direction dir, Node * child) {
+        if (dir == Direction::LEFT) {
+            right = child;
+        } else {
+            left = child;
+        }
+    }
+
+    Node(T d, Color c) : data(d), left(nullptr), right(nullptr), parent(nullptr), color(c) {}
+
+    Node() : data(), left(nullptr), right(nullptr), parent(nullptr), color(Color::BLACK) {}
 
     void node_print() {
         std::cout << data << " (" << (color == Color::RED ? "R" : "B") << ") ";
@@ -67,3 +82,4 @@ public:
     }
 };
 }
+#endif // NODE_H
