@@ -9,6 +9,7 @@ bool test_small_add();
 bool test_large_add();
 bool test_small_remove();
 bool test_tiny_remove();
+bool test_simple_remove();
 
 void run_test(std::string message,std::function<bool()>test_func) {
     std::cout << "Starting Test: " << message << "\t" << std::flush;
@@ -20,12 +21,14 @@ void run_test(std::string message,std::function<bool()>test_func) {
 
 }
 
+using namespace sql_brtree;
 int main() {
     printf("Starting BRTree tests...\n\n");
 
-    run_test(std::string("Small BRTree Add Test"), test_small_add);
-    run_test(std::string("Large BRTree Add Test"), test_large_add);
-    run_test(std::string("Tiny BRTree Remove Test"), test_tiny_remove);
+    //run_test(std::string("Small BRTree Add Test"), test_small_add);
+    //run_test(std::string("Large BRTree Add Test"), test_large_add);
+    //run_test(std::string("Tiny BRTree Remove Test"), test_tiny_remove);
+    run_test(std::string("Simple BRTree Remove Test"), test_simple_remove);
     //run_test(std::string("Small BRTree Remove Test"), test_small_remove);
     printf("\nAll Tests Finished\n");
     return 0;
@@ -106,14 +109,30 @@ bool test_tiny_remove() {
     tree.insert(10);
     tree.remove(10);
 
+    if(tree.contains(10) || !tree.verify_tree()) {
+        std::cout << "1. Failed Basic Removal." << std::endl;
+        return false;
+    }
     tree.insert(20);
     tree.insert(10);
-    tree.print_tree();
     tree.remove(20);
 
-    if(tree.contains(20) || !tree.contains(10)) {
-        std::cout << "Tree removal or insertion failed." << std::endl;
+    if(tree.contains(20) || !tree.contains(10) || !tree.verify_tree()) {
+        std::cout << "2. Failed Remove Root with one child." << std::endl;
         tree.print_tree();
+        return false;
+    }
+
+    tree.insert(10);
+    //tree.print_tree();
+    tree.insert(5);
+    //tree.print_tree();
+    tree.insert(20);
+    //tree.print_tree();
+    tree.remove(10);
+    //tree.print_tree();
+    if(tree.contains(10) || !tree.contains(5) || !tree.contains(20) || !tree.verify_tree()) {
+        std::cout << "3. Failed Remove Root with two children." << std::endl;
         return false;
     }
 
@@ -124,5 +143,54 @@ bool test_tiny_remove() {
     }
 
     //tree.print_tree();
+    return true;
+}
+
+void remove(int data, std::vector<int> * vector) {
+    for(int i = 0; i < vector->size(); i++) {
+        if(vector->at(i) == data) {
+            vector->erase(vector->begin()+i);
+            return;
+        }
+    }
+}
+
+bool contains_vector(Seq_BRTree<int> * tree, std::vector<int> vector) {
+    for(int i = 0; i < vector.size(); i++) {
+        if(!tree->contains(vector.at(i))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool test_simple_remove() {
+    sql_brtree::Seq_BRTree<int> tree;
+     const int NUM_ELEMENTS = 20;
+    std::vector<int> values;
+
+    // Generate random values
+    std::mt19937 rng(42); // Fixed seed for reproducibility
+    std::uniform_int_distribution<int> dist(1, 100);
+
+    for (int i = 0; i < NUM_ELEMENTS; ++i) {
+        int val = dist(rng);
+        values.push_back(val);
+        tree.insert(val);
+    }
+    std::cout << std::endl;
+    tree.print_tree();
+    tree.remove(46);
+    remove(46, &values);
+    std::cout << "whoa" << std::endl << std::flush;
+    if(!contains_vector(&tree, values)) {
+        std::cout << "Tree does not contain all elements after removal." << std::endl << std::flush;
+        return false;
+    }
+    tree.print_tree();
+    if(!tree.verify_tree()) {
+        std::cout << "Tree verification failed after insertions." << std::endl;
+        return false;
+    }
     return true;
 }

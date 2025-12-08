@@ -257,16 +257,26 @@ private:
     bool simple_remove(Node<T> * node) {
         if(node->left != nullptr && node->right != nullptr) {
             //Node has two children, find in-order successor
+            Direction dir = Direction::RIGHT;
             Node<T> * successor = node->right;
             while(successor->left != nullptr) {
+                dir = Direction::LEFT;
                 successor = successor->left;
             }
+
+            //swap node data with successor data
+            node->data = successor->data;
+
+            //successor can only have a right child
+            //if successor has a right child, change it to black and link it to successor's parent
             if(successor->right != nullptr) {
                 successor->right->color = Color::BLACK;
+                successor->right->parent = successor->parent;
             }
-            successor->parent->left = successor->right;
-            node->data = successor->data;
-            delete successor;
+            successor->parent->set_child(dir, successor->right);
+            if(successor->parent->get_opposite_child(dir) != nullptr) {
+                fix_tree(successor->parent->get_opposite_child(dir));
+            }
             return true;
         }
         if(node->left != nullptr || node->right != nullptr) {
@@ -285,6 +295,24 @@ private:
                 //node is root
                 root = child;
                 child->parent = nullptr;
+            }
+            delete node;
+            return true;
+        }
+        //Node has no children
+        if(node == root) {
+            //node is root
+            root = nullptr;
+            delete node;
+            return true;
+        }
+        if(node->color == Color::RED) {
+            //Simply remove red leaf
+            Node<T> * parent = node->parent;
+            if(parent->left == node) {
+                parent->left = nullptr;
+            } else {
+                parent->right = nullptr;
             }
             delete node;
             return true;
@@ -316,21 +344,18 @@ private:
             std::cout << "Node with data " << data << " not found." << std::endl;
             return;  
         }
-        if (simple_remove(node)) {return;}
+        if((node->color == Color::RED) || (node == root)) 
+            simple_remove(node);
+        else if(node->left != nullptr || node->right != nullptr) 
+            simple_remove(node);
 
-        
-        Node<T> * parent = node->parent;
-        if(parent == nullptr) {
-            //node is root
-            ;
-            root = nullptr;
-            return;
+        else {
+            Node<T> * parent = node->parent;
+            Direction dir = (parent->left == node) ? Direction::LEFT : Direction::RIGHT;
+            parent->set_child(dir, nullptr);
+            delete node;
+            start_balance(dir, parent);
         }
-        Direction dir = (parent->left == node) ? Direction::LEFT : Direction::RIGHT;
-
-        parent->set_child(dir, nullptr);
-
-        start_balance(dir, parent);
 
 
     }
