@@ -5,12 +5,53 @@
 #include <iostream>
 #include "KVPair.h"
 #include "Node.h"
+
+#define DEBUG 0
 namespace sql_brtree {
   
 template <typename T>
 class Seq_BRTree {
 
 private:
+
+    enum class Case {
+        CASE1,
+        CASE2,
+        CASE3,
+        CASE4,
+        CASE5,
+        CASE6
+    };
+
+    Case identify_case(Node<T> * parent, Node<T> * sibling, Node<T> * close_nephew, Node<T> * distant_nephew) {
+        if(parent == nullptr) {
+            return Case::CASE1;
+        }
+        if(get_color(parent) == Color::BLACK && get_color(sibling) == Color::BLACK
+         && get_color(close_nephew) == Color::BLACK && get_color(distant_nephew) == Color::BLACK) {
+            return Case::CASE2;
+        }
+        if(get_color(parent) == Color::BLACK && get_color(sibling) == Color::RED
+         && get_color(close_nephew) == Color::BLACK && get_color(distant_nephew) == Color::BLACK) {
+            return Case::CASE3;
+        }
+        if(get_color(parent) == Color::RED && get_color(sibling) == Color::BLACK
+         && get_color(close_nephew) == Color::BLACK && get_color(distant_nephew) == Color::BLACK) {
+            return Case::CASE4;
+        }
+        if(get_color(sibling) == Color::BLACK
+         && get_color(close_nephew) == Color::RED && get_color(distant_nephew) == Color::BLACK) {
+            return Case::CASE5;
+        }
+        if(get_color(sibling) == Color::BLACK
+         && get_color(distant_nephew) == Color::RED) {
+            return Case::CASE6;
+        }
+        throw std::runtime_error("identify_case: No case matched.");
+    
+    
+    }
+    
     void destructor_helper(Node<T> * node) {
         if (node != nullptr) {
             destructor_helper(node->left);
@@ -132,6 +173,19 @@ private:
             }
         }
 
+        if(left != nullptr) {
+            if(left->data >= node->data) {
+                printf("Left violation at node with data %d\n", node->data);
+                return -1;
+            }
+        }
+        if(right != nullptr) {
+            if(right->data <= node->data) {
+                printf("Right violation at node with data %d\n", node->data);
+                return -1;
+            }
+        }
+
         int left_black_height = verify_helper(left);
         int right_black_height = verify_helper(right);
 
@@ -169,127 +223,117 @@ private:
         return nullptr;
     }
 
-    void start_balance(Direction dir, Node<T> * node) {
-        Node<T> * parent = node->parent;
-        Node<T>* sibling, * close_nephew, * distant_nephew;
+    void setColor(Node<T> * n, Color c) {
+        if(n != nullptr) {
+            n->color = c;
+        }
+    }
 
-        sibling = parent->get_opposite_child(dir);
-        distant_nephew = sibling->get_opposite_child(dir);
-        close_nephew = sibling->get_child(dir);
-        if(sibling->color == Color::RED) {
-            //Case 3:
-            rotate_tree(parent, dir);
-            parent->color = Color::RED;
-            sibling->color = Color::BLACK;
-            sibling = close_nephew;
-            
-            distant_nephew = sibling->get_opposite_child(dir);
+    Color getColor(Node<T> * n) {
+        if(n == nullptr) {
+            return Color::BLACK;
+        } else {
+            return n->color;
+        }
+    }
 
-            if(distant_nephew && distant_nephew->color == Color::RED) {
-                //Case 6:
-                rotate_tree(parent, dir);
-                sibling->color = parent->color;
-                parent->color = Color::BLACK;
-                distant_nephew->color = Color::BLACK;
+    void start_balance_test(Node<T> * parent, Direction dir) {
+
+        Node<T>* sibling = parent->get_opposite_child(dir);
+        if (!sibling) return;  // No sibling, nothing to balance
+        
+        Node<T>* distant_nephew = sibling->get_opposite_child(dir);
+        Node<T>* close_nephew = sibling->get_child(dir);
+
+        Case case_id = identify_case(parent, sibling, close_nephew, distant_nephew);
+
+        switch(case_id) {
+            case Case::CASE1:
+            {
                 return;
+                break;
             }
-            close_nephew = sibling->get_opposite_child(dir);
-            
-            if(close_nephew && close_nephew->color == Color::RED) {
-                //Case 5:
-                rotate_tree(sibling, (dir == Direction::LEFT) ? Direction::RIGHT : Direction::LEFT);
-                close_nephew->color = Color::BLACK;
-                sibling->color = Color::RED;
+            case Case::CASE2:
+            {
+                std::cout << "Case 2 on pareent " << parent->data << std::endl << std::flush; 
+                set_color(sibling, Color::RED);
+                Direction parent_dir = (parent->parent->left == parent) ? Direction::LEFT : Direction::RIGHT;
+                start_balance_test(parent->parent, parent_dir);
+                return;
+                break;
+            }
+            case Case::CASE3:
+            {
+                rotate_tree(parent, dir);
+                set_color(parent, Color::RED);
+                set_color(sibling, Color::BLACK);
                 sibling = close_nephew;
-
-                rotate_tree(parent, dir);
-                sibling->color = parent->color;
-                parent->color = Color::BLACK;
-                distant_nephew->color = Color::BLACK;
+                distant_nephew = sibling->get_opposite_child(dir);
+                start_balance_test(parent, dir);
                 return;
+                break;
             }
-
-            sibling->color = Color::RED;
-            parent->color = Color::BLACK;
-            return;
-        }
-
-        if(distant_nephew && distant_nephew->color == Color::RED) {
-            //Case 6:
-            rotate_tree(parent, dir);
-            sibling->color = parent->color;
-            parent->color = Color::BLACK;
-            distant_nephew->color = Color::BLACK;
-            return;
-        }
-
-        if(close_nephew && close_nephew->color == Color::RED) {
-            //Case 5:
-            rotate_tree(sibling, (dir == Direction::LEFT) ? Direction::RIGHT : Direction::LEFT);
-            close_nephew->color = Color::BLACK;
-            sibling->color = Color::RED;
-            sibling = close_nephew;
-
-            rotate_tree(parent, dir);
-            sibling->color = parent->color;
-            parent->color = Color::BLACK;
-            distant_nephew->color = Color::BLACK;
-            return;
-        }
-
-        //Case 1:
-        if(!parent)
-            return;
-
-        if(parent->color == Color::RED) {
-            sibling->color = Color::RED;
-            parent->color = Color::BLACK;
-            return;
-        }
-
-        sibling->color = Color::RED;
-        node = parent;
-        if(node->parent != nullptr) {
-            start_balance((node->parent->left == node) ? Direction::LEFT : Direction::RIGHT, node);
+            case Case::CASE4:
+            {
+                set_color(sibling, Color::RED);
+                set_color(parent, Color::BLACK);
+                return;
+                break;
+            }
+            case Case::CASE5:
+            {
+                //std::cout << "Start Balance Test: Case 5 identified." << std::endl << std::flush;
+                rotate_tree(sibling, (dir == Direction::LEFT) ? Direction::RIGHT : Direction::LEFT);
+                set_color(sibling, Color::RED);
+                set_color(close_nephew, Color::BLACK);
+                sibling = close_nephew;
+                distant_nephew = sibling->get_opposite_child(dir);
+                start_balance_test(parent, dir);
+                return;
+                break;
+            }
+            case Case::CASE6:
+            {
+                //std::cout << "Start Balance Test: Case 6 identified." << std::endl << std::flush;
+                rotate_tree(parent, dir);
+                set_color(sibling, get_color(parent));
+                set_color(parent, Color::BLACK);
+                set_color(distant_nephew, Color::BLACK);
+                return;
+                break;
+            }
         }
     }
 
     bool simple_remove(Node<T> * node) {
         if(node->left != nullptr && node->right != nullptr) {
             //Node has two children, find in-order successor
-            Direction dir = Direction::RIGHT;
+            #if DEBUG
+            std::cout << "Two Children Remove called." << std::endl << std::flush;
+            #endif
             Node<T> * successor = node->right;
             while(successor->left != nullptr) {
-                dir = Direction::LEFT;
                 successor = successor->left;
             }
 
             //swap node data with successor data
             node->data = successor->data;
-
-            //successor can only have a right child
-            //if successor has a right child, change it to black and link it to successor's parent
-            if(successor->right != nullptr) {
-                successor->right->color = Color::BLACK;
-                successor->right->parent = successor->parent;
-            }
-            successor->parent->set_child(dir, successor->right);
-            if(successor->parent->get_opposite_child(dir) != nullptr) {
-                fix_tree(successor->parent->get_opposite_child(dir));
-            }
+            this->remove_helper(successor);
+            #if DEBUG
+            print_tree();
+            #endif
             return true;
         }
-        if(node->left != nullptr || node->right != nullptr) {
+        else if(node->left != nullptr || node->right != nullptr) {
             //Node has one child
             Node<T> * child = (node->left != nullptr) ? node->left : node->right;
-            child->color = Color::BLACK;
             Node<T> * parent = node->parent;
+            
+            child->color = Color::BLACK;
+
             if(parent != nullptr) {
-                if(parent->left == node) {
-                    parent->left = child;
-                } else {
-                    parent->right = child;
-                }
+                Direction dir = (parent->left == node) ? Direction::LEFT: Direction::RIGHT;
+                parent->set_child(dir, child);
                 child->parent = parent;
             } else {
                 //node is root
@@ -320,6 +364,43 @@ private:
         return false;
     }
 
+    void remove_helper(Node<T> * node) {
+
+        std::cout << "Removing node with data " << node->data << std::endl << std::flush;
+
+        if((node->color == Color::BLACK) && (node->left == nullptr) && (node->right == nullptr)) {
+            //Node is black leaf
+            if(node == root) {
+                root = nullptr;
+                delete node;
+                return;
+            }
+            #if DEBUG
+            std::cout << "Black leaf remove called." << std::endl << std::flush;
+            #endif
+            Node<T> * parent = node->parent;
+            Direction dir = (node->parent->left == node) ? Direction::LEFT : Direction::RIGHT;
+
+            parent->set_child(dir, nullptr);
+            delete node;
+            start_balance_test(parent, dir);
+        }
+        else {
+            #if DEBUG
+            std::cout << "Simple remove called." << std::endl << std::flush;
+            #endif
+            simple_remove(node);
+        }
+    }
+
+    Color get_color(Node<T>* n) {
+        return getColor(n);
+    }
+
+    void set_color(Node<T>* n, Color c) {
+        setColor(n, c);
+    }
+
     public:
     Seq_BRTree<T>() {
         root = nullptr;
@@ -334,6 +415,9 @@ private:
             return;
         }   
         insert_helper(root, data);
+        if(root != nullptr) {
+            set_color(root, Color::BLACK);
+        }
     }
     bool contains(T data) {
         return (find_node(data) != nullptr) ? true : false;
@@ -344,21 +428,12 @@ private:
             std::cout << "Node with data " << data << " not found." << std::endl;
             return;  
         }
-        if((node->color == Color::RED) || (node == root)) 
-            simple_remove(node);
-        else if(node->left != nullptr || node->right != nullptr) 
-            simple_remove(node);
-
-        else {
-            Node<T> * parent = node->parent;
-            Direction dir = (parent->left == node) ? Direction::LEFT : Direction::RIGHT;
-            parent->set_child(dir, nullptr);
-            delete node;
-            start_balance(dir, parent);
+        remove_helper(node);
+        if(root != nullptr) {
+            set_color(root, Color::BLACK);
         }
-
-
     }
+
 
     bool verify_tree() {
         if (verify_helper(root) < 1) {
@@ -375,6 +450,7 @@ private:
         }
         print_helper(root,0);
     }
+
 private:
     Node<T>* root;
 

@@ -2,7 +2,7 @@ CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -g
 TARGET = test_seq_brtree
 SOURCES = test_seq_brtree.cpp
-OBJECTS = $(SOURCES:.h=.o)
+OBJECTS = test_seq_brtree.o
 
 all: $(TARGET)
 
@@ -13,6 +13,6 @@ $(TARGET): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJECTS) $(TARGET)
+	rm -f test_seq_brtree.o
 
 .PHONY: all clean

@@ -5,14 +5,18 @@
 #include <string>
 #include <functional>
 #include <random>
+#include <iomanip>
+#include <algorithm>
+
 bool test_small_add();
 bool test_large_add();
 bool test_small_remove();
 bool test_tiny_remove();
 bool test_simple_remove();
+bool test_large_remove(); 
 
 void run_test(std::string message,std::function<bool()>test_func) {
-    std::cout << "Starting Test: " << message << "\t" << std::flush;
+    std::cout <<  "Starting Test: " << std::left << std::setw(40) << message << std::flush;
     if (test_func()) {
         std::cout << "[PASS] " << std::endl;
     } else {
@@ -28,8 +32,9 @@ int main() {
     //run_test(std::string("Small BRTree Add Test"), test_small_add);
     //run_test(std::string("Large BRTree Add Test"), test_large_add);
     //run_test(std::string("Tiny BRTree Remove Test"), test_tiny_remove);
-    run_test(std::string("Simple BRTree Remove Test"), test_simple_remove);
+    //run_test(std::string("Simple BRTree Remove Test"), test_simple_remove);
     //run_test(std::string("Small BRTree Remove Test"), test_small_remove);
+    run_test(std::string("Large BRTree Remove Test"), test_large_remove);
     printf("\nAll Tests Finished\n");
     return 0;
 }
@@ -107,7 +112,9 @@ bool test_tiny_remove() {
     sql_brtree::Seq_BRTree<int> tree;
 
     tree.insert(10);
+    //tree.print_tree();
     tree.remove(10);
+    //tree.print_tree();
 
     if(tree.contains(10) || !tree.verify_tree()) {
         std::cout << "1. Failed Basic Removal." << std::endl;
@@ -147,7 +154,7 @@ bool test_tiny_remove() {
 }
 
 void remove(int data, std::vector<int> * vector) {
-    for(int i = 0; i < vector->size(); i++) {
+    for(size_t i = 0; i < vector->size(); i++) {
         if(vector->at(i) == data) {
             vector->erase(vector->begin()+i);
             return;
@@ -156,7 +163,7 @@ void remove(int data, std::vector<int> * vector) {
 }
 
 bool contains_vector(Seq_BRTree<int> * tree, std::vector<int> vector) {
-    for(int i = 0; i < vector.size(); i++) {
+    for(size_t i = 0; i < vector.size(); i++) {
         if(!tree->contains(vector.at(i))) {
             return false;
         }
@@ -178,19 +185,68 @@ bool test_simple_remove() {
         values.push_back(val);
         tree.insert(val);
     }
-    std::cout << std::endl;
-    tree.print_tree();
+    //tree.print_tree();
     tree.remove(46);
     remove(46, &values);
-    std::cout << "whoa" << std::endl << std::flush;
     if(!contains_vector(&tree, values)) {
         std::cout << "Tree does not contain all elements after removal." << std::endl << std::flush;
         return false;
     }
-    tree.print_tree();
     if(!tree.verify_tree()) {
         std::cout << "Tree verification failed after insertions." << std::endl;
         return false;
     }
+    return true;
+}
+bool test_large_remove() {
+    std::mt19937 rng(42); // Fixed seed for reproducibility
+    std::uniform_int_distribution<int> dist(1, 1000);
+
+    sql_brtree::Seq_BRTree<int> tree;
+
+    int num_vals = 100;
+    std::vector<int> v;
+    for(int i = 0; i< num_vals; i++) {
+        int val = dist(rng);
+        if(!std::count(v.begin(), v.end(), val)) {
+            v.push_back(val);
+            tree.insert(val);
+        }
+    }
+
+    tree.print_tree();
+
+    for(size_t i = 0; i < v.size(); i++) {
+        if(!tree.contains(v.at(i))) {
+            std::cout << "Setup failed: Not all values present" << std::endl << std::flush;
+            return false;
+        } 
+    }
+
+
+    if(!tree.verify_tree()) {
+        std::cout << "Setup failed: Tree didn't verify" << std::endl;
+        return false;
+    }
+    while(v.size()) {
+        int val = dist(rng);
+        int index = val%v.size();
+        int target = v.at(val%v.size());
+        v.erase(v.begin() + index);
+        std::cout << "Target = " << target << std::endl << std::flush;
+        if(target == 14) {
+            std::cout << "Old Tree" << std::endl;
+            tree.print_tree();
+        }
+        tree.remove(target);
+        if(!tree.verify_tree()) {
+            std::cout << "New Tree" << std::endl;
+            tree.print_tree();
+            std::cout << "Violation in removal:" << std::endl <<std::flush;
+            return false;
+        }
+    }
+
+
     return true;
 }

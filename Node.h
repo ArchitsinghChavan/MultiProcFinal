@@ -80,6 +80,28 @@ public:
         parent = other.parent;
         return true;
     }
+
+    static void setColor(Node * n, Color c) {
+        if(n != nullptr) {
+            n->color = c;
+        }
+    }
+
+    static Color getColor(Node * n) {
+        if(n == nullptr) {
+            return Color::BLACK;
+        } else {
+            return n->color;
+        }
+    }
+
+    static void print_node(Node * n) {
+        if(n != nullptr) {
+            n->node_print();
+        } else {
+            std::cout << "Node is null." << std::endl;
+        }
+    }
 };
 }
 #endif // NODE_H
