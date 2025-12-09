@@ -238,7 +238,8 @@ private:
     }
 
     void start_balance_test(Node<T> * parent, Direction dir) {
-
+        if(parent == nullptr)
+            return;
         Node<T>* sibling = parent->get_opposite_child(dir);
         if (!sibling) return;  // No sibling, nothing to balance
         
@@ -255,8 +256,10 @@ private:
             }
             case Case::CASE2:
             {
-                std::cout << "Case 2 on pareent " << parent->data << std::endl << std::flush; 
+                //std::cout << "Case 2 on pareent " << parent->data << std::endl << std::flush; 
                 set_color(sibling, Color::RED);
+                if(parent->parent == nullptr)
+                    return;
                 Direction parent_dir = (parent->parent->left == parent) ? Direction::LEFT : Direction::RIGHT;
                 start_balance_test(parent->parent, parent_dir);
                 return;
@@ -366,7 +369,7 @@ private:
 
     void remove_helper(Node<T> * node) {
 
-        std::cout << "Removing node with data " << node->data << std::endl << std::flush;
+        //std::cout << "Removing node with data " << node->data << std::endl << std::flush;
 
         if((node->color == Color::BLACK) && (node->left == nullptr) && (node->right == nullptr)) {
             //Node is black leaf

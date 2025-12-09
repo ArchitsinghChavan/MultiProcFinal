@@ -14,6 +14,7 @@ bool test_small_remove();
 bool test_tiny_remove();
 bool test_simple_remove();
 bool test_large_remove(); 
+bool test_large_add_remove(); 
 
 void run_test(std::string message,std::function<bool()>test_func) {
     std::cout <<  "Starting Test: " << std::left << std::setw(40) << message << std::flush;
@@ -29,12 +30,14 @@ using namespace sql_brtree;
 int main() {
     printf("Starting BRTree tests...\n\n");
 
-    //run_test(std::string("Small BRTree Add Test"), test_small_add);
-    //run_test(std::string("Large BRTree Add Test"), test_large_add);
-    //run_test(std::string("Tiny BRTree Remove Test"), test_tiny_remove);
-    //run_test(std::string("Simple BRTree Remove Test"), test_simple_remove);
-    //run_test(std::string("Small BRTree Remove Test"), test_small_remove);
+    run_test(std::string("Small BRTree Add Test"), test_small_add);
+    run_test(std::string("Large BRTree Add Test"), test_large_add);
+    run_test(std::string("Tiny BRTree Remove Test"), test_tiny_remove);
+    run_test(std::string("Simple BRTree Remove Test"), test_simple_remove);
+    run_test(std::string("Small BRTree Remove Test"), test_small_remove);
     run_test(std::string("Large BRTree Remove Test"), test_large_remove);
+    run_test(std::string("Large BRTree Add Remove Test"), test_large_add_remove);
+    
     printf("\nAll Tests Finished\n");
     return 0;
 }
@@ -199,6 +202,7 @@ bool test_simple_remove() {
     return true;
 }
 bool test_large_remove() {
+
     std::mt19937 rng(42); // Fixed seed for reproducibility
     std::uniform_int_distribution<int> dist(1, 1000);
 
@@ -214,7 +218,7 @@ bool test_large_remove() {
         }
     }
 
-    tree.print_tree();
+    //tree.print_tree();
 
     for(size_t i = 0; i < v.size(); i++) {
         if(!tree.contains(v.at(i))) {
@@ -222,7 +226,6 @@ bool test_large_remove() {
             return false;
         } 
     }
-
 
     if(!tree.verify_tree()) {
         std::cout << "Setup failed: Tree didn't verify" << std::endl;
@@ -233,20 +236,64 @@ bool test_large_remove() {
         int index = val%v.size();
         int target = v.at(val%v.size());
         v.erase(v.begin() + index);
-        std::cout << "Target = " << target << std::endl << std::flush;
-        if(target == 14) {
-            std::cout << "Old Tree" << std::endl;
-            tree.print_tree();
-        }
+        //std::cout << "Target = " << target << std::endl << std::flush;
+        //if(target == 951) {
+            //std::cout << "Old Tree" << std::endl;
+        ////    tree.print_tree();
+        //}
         tree.remove(target);
         if(!tree.verify_tree()) {
-            std::cout << "New Tree" << std::endl;
-            tree.print_tree();
+            //std::cout << "New Tree" << std::endl;
+            //tree.print_tree();
             std::cout << "Violation in removal:" << std::endl <<std::flush;
             return false;
         }
     }
 
 
+    return true;
+}
+
+bool test_large_add_remove() {
+    std::mt19937 rng(65); // Fixed seed for reproducibility
+    std::uniform_int_distribution<int> dist(1, 10000);
+    std::uniform_int_distribution<int> coin(0, 1);
+
+    int num_interations = 10000;
+
+    std::vector<int> v;
+
+    sql_brtree::Seq_BRTree<int> tree;
+
+    for(int i = 0; i < num_interations; i++) {
+        int val = dist(rng);
+        int add = coin(rng);
+
+        if((v.size() < 1000)||add) {
+            if(!std::count(v.begin(), v.end(), val))
+                v.push_back(val);
+            tree.insert(val);
+            if(!tree.contains(val)) {
+                return false;
+            }
+        }
+        else {
+            int index = val%v.size();
+            int target = v.at(val%v.size());
+            v.erase(v.begin() + index);
+            tree.remove(target);
+            if(tree.contains(target))
+                return false;
+        }
+        if(!tree.verify_tree()) {
+            return false;
+        }
+    }
+    while(v.size()) {
+        tree.remove(v.at(v.size()-1));
+        if(tree.contains(v.at(v.size()-1)))
+            return false;
+        v.pop_back();
+    }
     return true;
 }
