@@ -14,7 +14,7 @@ public:
     Node* left;
     Node* right;
     Node* parent;
-
+    int flag = -1;
     Color color;
 
     inline Node * get_child(Direction dir) {
@@ -43,6 +43,7 @@ public:
 
     Node(T d, Color c) : data(d), left(nullptr), right(nullptr), parent(nullptr), color(c) {}
 
+    Node(T d, Color c, int f) : data(d), left(nullptr), right(nullptr), parent(nullptr), color(c), flag(f) {}
     Node() : data(), left(nullptr), right(nullptr), parent(nullptr), color(Color::BLACK) {}
 
     void node_print() {
@@ -70,7 +71,7 @@ public:
     bool operator>=(const Node<T>& other) const {
         return data >= other.data;
     }
-    bool operator=(const Node<T>& other) const {
+    bool operator=(const Node<T>& other) {
         data = other.data;
         color = other.color;
         left = other.left;

@@ -43,7 +43,7 @@ int main() {
 }
 
 bool test_small_add() {
-    sql_brtree::Seq_BRTree<int> tree;
+    sql_brtree::Cur_BRTree<int> tree;
 
     tree.insert(10);
     tree.insert(20);
@@ -62,7 +62,7 @@ bool test_small_add() {
 }
 
 bool test_large_add() {
-    sql_brtree::Seq_BRTree<int> tree;
+    sql_brtree::Cur_BRTree<int> tree;
     const int NUM_ELEMENTS = 10000;
     std::vector<int> values;
 
@@ -84,7 +84,7 @@ bool test_large_add() {
 }
 
 bool test_small_remove() {
-    sql_brtree::Seq_BRTree<int> tree;
+    sql_brtree::Cur_BRTree<int> tree;
 
     tree.insert(10);
     tree.insert(20);
@@ -112,7 +112,7 @@ bool test_small_remove() {
 }
 
 bool test_tiny_remove() {
-    sql_brtree::Seq_BRTree<int> tree;
+    sql_brtree::Cur_BRTree<int> tree;
 
     tree.insert(10);
     //tree.print_tree();
@@ -165,7 +165,7 @@ void remove(int data, std::vector<int> * vector) {
     }
 }
 
-bool contains_vector(Seq_BRTree<int> * tree, std::vector<int> vector) {
+bool contains_vector(Cur_BRTree<int> * tree, std::vector<int> vector) {
     for(size_t i = 0; i < vector.size(); i++) {
         if(!tree->contains(vector.at(i))) {
             return false;
@@ -175,7 +175,7 @@ bool contains_vector(Seq_BRTree<int> * tree, std::vector<int> vector) {
 }
 
 bool test_simple_remove() {
-    sql_brtree::Seq_BRTree<int> tree;
+    sql_brtree::Cur_BRTree<int> tree;
      const int NUM_ELEMENTS = 20;
     std::vector<int> values;
 
@@ -206,7 +206,7 @@ bool test_large_remove() {
     std::mt19937 rng(42); // Fixed seed for reproducibility
     std::uniform_int_distribution<int> dist(1, 1000);
 
-    sql_brtree::Seq_BRTree<int> tree;
+    sql_brtree::Cur_BRTree<int> tree;
 
     int num_vals = 100;
     std::vector<int> v;
@@ -263,7 +263,7 @@ bool test_large_add_remove() {
 
     std::vector<int> v;
 
-    sql_brtree::Seq_BRTree<int> tree;
+    sql_brtree::Cur_BRTree<int> tree;
 
     for(int i = 0; i < num_interations; i++) {
         int val = dist(rng);

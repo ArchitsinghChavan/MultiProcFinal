@@ -1,19 +1,18 @@
-#ifndef SEQUENTIAL_BRTREE_H
-#define SEQUENTIAL_BRTREE_H
 
 #include <stdio.h>
 #include <iostream>
+#include <thread>
 #include "KVPair.h"
-#include "Node.h"
-
+#include "Concurrent_Node.h"
+#include <omp.h>
 #define DEBUG 0
-namespace sql_brtree {
-#ifndef TEMPLATE_TYPE
-#define TEMPLATE_TYPE 1
-template <typename T>
-#endif
-class Cur_BRTree {
 
+
+template <typename T>
+class Cur_BRTree {
+private:
+    Node<T>* root;
+    Node<T> * flyweight;
 private:
 
     
@@ -51,11 +50,15 @@ private:
         }
     }
 
-#include "sequential_brtree_add.h"
 
     int verify_helper(Node<T> * node) {
         if (node == nullptr) {
             return 1; // Black height of null nodes is 1
+        }
+
+        if(node->flag != -1) {
+            std::cout<< "Flag on " << node->data << "remains set to a thread number" << std::endl << std::flush;
+            return -1;
         }
 
         Node<T> * left = node->left;
@@ -134,7 +137,7 @@ private:
         }
     }
 
-#include "sequential_brtree_remove.h"
+//#include "concurrent_brtree_remove.h"
 
     Color get_color(Node<T>* n) {
         return getColor(n);
@@ -152,16 +155,62 @@ private:
         destructor_helper(root);
     }
 
-    void insert(T data) {
-        if(root == nullptr) {
-            root = new Node<T>(data, Color::BLACK);
+    void emergency_unlock(Node<T> * node) {
+        if(node == nullptr)
             return;
-        }   
-        insert_helper(root, data);
-        if(root != nullptr) {
-            set_color(root, Color::BLACK);
+        emergency_unlock(node->left);
+        emergency_unlock(node->right);
+        if(node->flag == omp_get_thread_num()) {
+            node->flag = -1;
         }
+
     }
+
+#include "concurrent_brtree_add.h"
+    void insert(T data) {
+        //replace root with new node
+        Node<T> * new_node = new Node<T>(data, Color::RED);
+        if(root == nullptr) {
+            void * p = nullptr;
+            __atomic_compare_exchange(&root, &p, &new_node, false, 5, 5);
+            if(p == nullptr) 
+                return;
+        }
+
+        while(root->flag != omp_get_thread_num()) {
+            int expected = -1;
+            __atomic_compare_exchange_n(&root->flag, &expected, omp_get_thread_num(), false, 5, 5);
+            std::this_thread::yield();
+        }
+
+        std::cout << "Acquire root" << std::endl;
+
+        //Let insert_helper handle all locking
+        while(!insert_helper(root, new_node)){
+            //emergency_unlock(root);
+            while(root->flag != omp_get_thread_num()) {
+                //emergency_unlock(root);
+                int expected = -1;
+                __atomic_compare_exchange_n(&root->flag, &expected, omp_get_thread_num(), false, 5, 5);
+                std::cout << "Expected: " << root->data << std::endl; 
+                std::this_thread::yield();
+            }
+            std::this_thread::yield();
+            //emergency_unlock(root);
+
+        }
+        std::cout << omp_get_thread_num() << ": Insert FInished" << std::endl;
+        //emergency_unlock(root);
+        
+    }
+
+
+
+
+
+
+
+
     bool contains(T data) {
         return (find_node(data) != nullptr) ? true : false;
     }
@@ -193,10 +242,4 @@ private:
         }
         print_helper(root,0);
     }
-
-private:
-    Node<T>* root;
-
 };
-} // namespace sql_brtree
-#endif // SEQUENTIAL_BRTREE_H
